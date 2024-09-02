@@ -5,13 +5,14 @@ from urllib.parse import urlparse, ParseResult
 import aiohttp
 from bs4 import BeautifulSoup
 import backoff
+from settings import MAX_TRIES, MAX_TIME
 
 
 visited_urls = set()
 test_urls = []
 
 
-@backoff.on_exception(backoff.expo, aiohttp.ClientError, max_tries=5, max_time=60)
+@backoff.on_exception(backoff.expo, aiohttp.ClientError, max_tries=MAX_TRIES, max_time=MAX_TIME)
 async def get_html(url):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
