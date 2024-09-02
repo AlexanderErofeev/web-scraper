@@ -5,8 +5,12 @@ from urllib.parse import urlparse, ParseResult
 import aiohttp
 from bs4 import BeautifulSoup
 import backoff
-from settings import MAX_TRIES, MAX_TIME
+from settings import MAX_TRIES, MAX_TIME, LOG_CONFIG
+import logging
+import logging.config
 
+
+logging.config.dictConfig(LOG_CONFIG)
 
 visited_urls = set()
 test_urls = []
@@ -60,41 +64,46 @@ async def parse_site(
 ) -> None:
     domain = urlparse(url).netloc
     sem = asyncio.Semaphore(parallel_request_count)
-    await parse_site_recursive(url, max_depth, domain, sem)
+    log = logging.getLogger('scraper')
+
+    log.info(f'Parsing site: {domain} started')
+    t1 = time()
+    await parse_site_recursive(url, max_depth, domain, sem, log)
+    log.info(f'Parsing site: {domain} finished, pages: {len(visited_urls)}, total time: {time() - t1}')
 
 
 async def parse_site_recursive(
         url: str,
         max_depth: int,
         domain: str,
-        sem: asyncio.Semaphore
+        sem: asyncio.Semaphore,
+        log: logging.Logger,
 ):
     global visited_urls
 
     async with sem:
         page = await get_html(url)
 
-    print(url)
+    log.debug(f'Parsing page: {url}')
     test_urls.append(url)
 
     if max_depth == 1:
+        log.debug(f'Parsing page: {url} finished, max depth reached')
         return
 
     page_links = get_internal_links(page, domain)
     new_page_links = page_links - visited_urls
 
+    log.debug(f'Parsing page: {url} finished, links: {len(page_links)}, new links: {len(new_page_links)}')
+
     visited_urls = visited_urls | new_page_links
 
-    tasks = [asyncio.create_task(parse_site_recursive(link, max_depth - 1, domain, sem)) for link in new_page_links]
+    tasks = [asyncio.create_task(parse_site_recursive(link, max_depth - 1, domain, sem, log)) for link in new_page_links]
     await asyncio.gather(*tasks)
 
 
 async def main():
-    t1 = time()
-    await parse_site('https://anextour.ru/', 5, 20)
-
-    print(len(visited_urls))
-    print(time() - t1)
+    await parse_site('https://anextour.ru/', 3, 20)
 
 
 asyncio.run(main())
