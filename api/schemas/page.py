@@ -3,14 +3,14 @@ from pydantic import BaseModel, ConfigDict
 
 class SPageList(BaseModel):
     id: int
-    title: str
+    title: str | None
     url: str
 
     model_config = ConfigDict(from_attributes=True)
 
 
 class SPageDetail(SPageList):
-    html: str
+    html: str | None
 
 
 class SPageAdd(BaseModel):
