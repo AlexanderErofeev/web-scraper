@@ -11,3 +11,9 @@ class SPageList(BaseModel):
 
 class SPageDetail(SPageList):
     html: str
+
+
+class SPageAdd(BaseModel):
+    title: str | None
+    url: str
+    html: str | None
