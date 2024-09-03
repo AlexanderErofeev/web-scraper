@@ -5,15 +5,14 @@ from urllib.parse import urlparse, ParseResult
 import aiohttp
 from bs4 import BeautifulSoup
 import backoff
-from settings import MAX_TRIES, MAX_TIME, LOG_CONFIG
+from api.repositories.pages import PageRepository
+from api.schemas.page import SPageAdd
+from settings import MAX_TRIES, MAX_TIME, LOG_CONFIG, MAX_TRIES_DB_REQUESTS
 import logging
 import logging.config
 
-
 logging.config.dictConfig(LOG_CONFIG)
-
 visited_urls = set()
-test_urls = []
 
 
 @backoff.on_exception(backoff.expo, aiohttp.ClientError, max_tries=MAX_TRIES, max_time=MAX_TIME)
@@ -42,9 +41,8 @@ def format_link(link: ParseResult, domain: str) -> str:
 
 
 def get_internal_links(page: str, domain: str) -> Set[str]:
-    link_tegs = (BeautifulSoup(page, 'html.parser')
-                 .body
-                 .find_all('a'))
+    page = BeautifulSoup(page, 'html.parser')
+    link_tegs = page.body.find_all('a') if page and page.body else []
 
     page_links = []
     for teg in link_tegs:
@@ -57,6 +55,18 @@ def get_internal_links(page: str, domain: str) -> Set[str]:
     return set(page_links)
 
 
+def get_title(page: str) -> str:
+    page = BeautifulSoup(page, 'html.parser')
+    title = page.body.find('h1') if page and page.body else None
+    return title.text if title else None
+
+
+async def save_page_to_db(page: str, url: str) -> None:
+    page_title = get_title(page)
+    page_obj = SPageAdd(title=page_title, url=url, html='')
+    await PageRepository.add_task(page_obj)
+
+
 async def parse_site(
         url: str,
         max_depth: int,
@@ -64,11 +74,12 @@ async def parse_site(
 ) -> None:
     domain = urlparse(url).netloc
     sem = asyncio.Semaphore(parallel_request_count)
+    sem_db = asyncio.Semaphore(MAX_TRIES_DB_REQUESTS)
     log = logging.getLogger('scraper')
 
     log.info(f'Parsing site: {domain} started')
     t1 = time()
-    await parse_site_recursive(url, max_depth, domain, sem, log)
+    await parse_site_recursive(url, max_depth, domain, sem, sem_db, log)
     log.info(f'Parsing site: {domain} finished, pages: {len(visited_urls)}, total time: {time() - t1}')
 
 
@@ -77,6 +88,7 @@ async def parse_site_recursive(
         max_depth: int,
         domain: str,
         sem: asyncio.Semaphore,
+        sem_db: asyncio.Semaphore,
         log: logging.Logger,
 ):
     global visited_urls
@@ -84,8 +96,10 @@ async def parse_site_recursive(
     async with sem:
         page = await get_html(url)
 
-    log.debug(f'Parsing page: {url}')
-    test_urls.append(url)
+    log.debug(f'Parsing page: {url} started')
+
+    async with sem_db:
+        await save_page_to_db(page, url)
 
     if max_depth == 1:
         log.debug(f'Parsing page: {url} finished, max depth reached')
@@ -98,7 +112,8 @@ async def parse_site_recursive(
 
     visited_urls = visited_urls | new_page_links
 
-    tasks = [asyncio.create_task(parse_site_recursive(link, max_depth - 1, domain, sem, log)) for link in new_page_links]
+    tasks = [asyncio.create_task(parse_site_recursive(link, max_depth - 1, domain, sem, sem_db, log)) for link in
+             new_page_links]
     await asyncio.gather(*tasks)
 
 

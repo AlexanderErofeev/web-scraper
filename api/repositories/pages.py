@@ -1,10 +1,20 @@
 from sqlalchemy import select
 from ..models.page import Page
-from ..schemas.page import SPageList, SPageDetail
+from ..schemas.page import SPageList, SPageDetail, SPageAdd
 from ..database import SessionLocal
 
 
 class PageRepository:
+    @classmethod
+    async def add_task(cls, task: SPageAdd) -> int:
+        async with SessionLocal() as session:
+            data = task.model_dump()
+            new_task = Page(**data)
+            session.add(new_task)
+            await session.flush()
+            await session.commit()
+            return new_task.id
+
     @classmethod
     async def get_pages(cls) -> list[SPageList]:
         async with SessionLocal() as session:
