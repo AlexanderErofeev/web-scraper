@@ -3,6 +3,8 @@
 MAX_TRIES = 5
 MAX_TIME = 60
 
+MAX_TRIES_DB_REQUESTS = 10
+
 
 LOG_CONFIG = {
     "version": 1,
