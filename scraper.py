@@ -3,6 +3,7 @@ from time import time
 from typing import Set
 from urllib.parse import urlparse, ParseResult
 import aiohttp
+import aiofiles as aiof
 from bs4 import BeautifulSoup
 import backoff
 from api.repositories.pages import PageRepository
@@ -10,6 +11,8 @@ from api.schemas.page import SPageAdd
 from settings import MAX_TRIES, MAX_TIME, LOG_CONFIG, MAX_TRIES_DB_REQUESTS
 import logging
 import logging.config
+from uuid import uuid4
+from pathlib import Path
 
 logging.config.dictConfig(LOG_CONFIG)
 visited_urls = set()
@@ -63,7 +66,11 @@ def get_title(page: str) -> str:
 
 async def save_page_to_db(page: str, url: str) -> None:
     page_title = get_title(page)
-    page_obj = SPageAdd(title=page_title, url=url, html='')
+    file_name = f"{uuid4()}.html"
+    async with aiof.open(Path('scraper_htmls', file_name), "w", encoding='utf-8') as out:
+        await out.write(page)
+        await out.flush()
+    page_obj = SPageAdd(title=page_title, url=url, html=file_name)
     await PageRepository.add_task(page_obj)
 
 

@@ -1,6 +1,8 @@
+from pathlib import Path
 from fastapi import APIRouter, HTTPException
 from ..schemas.page import SPageList, SPageDetail
 from ..repositories.pages import PageRepository
+import aiofiles as aiof
 
 
 router = APIRouter(prefix="/pages")
@@ -21,5 +23,10 @@ async def get_page(id: int):
             status_code=404,
             detail="Page not found"
         )
+
+    file = Path('scraper_htmls', page.html)
+    async with aiof.open(file, mode='r', encoding='utf-8') as f:
+        contents = await f.read()
+        page.html = contents
 
     return page
