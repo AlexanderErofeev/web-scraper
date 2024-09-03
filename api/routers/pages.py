@@ -12,7 +12,7 @@ async def get_tasks():
     return pages
 
 
-@router.get("/{page_id}", response_model=SPageDetail)
+@router.get("/{id}", response_model=SPageDetail)
 async def get_page(id: int):
     page = await PageRepository.get_page(id)
 
