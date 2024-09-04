@@ -1,4 +1,5 @@
 import asyncio
+import os
 from time import time
 from typing import Set, List
 from urllib.parse import urlparse, ParseResult
@@ -141,6 +142,7 @@ async def parse_site_recursive(
 
 
 async def main():
+    os.makedirs('scraper_htmls', exist_ok=True)
     await parse_site('https://anextour.ru/', 8, 50)
 
 
