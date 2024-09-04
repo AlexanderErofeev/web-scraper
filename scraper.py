@@ -1,6 +1,6 @@
 import asyncio
 from time import time
-from typing import Set
+from typing import Set, List
 from urllib.parse import urlparse, ParseResult
 import aiohttp
 import aiofiles as aiof
@@ -16,6 +16,7 @@ from pathlib import Path
 
 logging.config.dictConfig(LOG_CONFIG)
 visited_urls = set()
+log = logging.getLogger('scraper')
 
 
 @backoff.on_exception(backoff.expo, aiohttp.ClientError, max_tries=MAX_TRIES, max_time=MAX_TIME)
@@ -82,22 +83,14 @@ async def parse_site(
     domain = urlparse(url).netloc
     sem = asyncio.Semaphore(parallel_request_count)
     sem_db = asyncio.Semaphore(MAX_TRIES_DB_REQUESTS)
-    log = logging.getLogger('scraper')
 
     log.info(f'Parsing site: {domain} started')
     t1 = time()
-    await parse_site_recursive(url, max_depth, domain, sem, sem_db, log)
+    await parse_site_recursive(url, max_depth, domain, sem, sem_db)
     log.info(f'Parsing site: {domain} finished, pages: {len(visited_urls)}, total time: {time() - t1}')
 
 
-async def parse_site_recursive(
-        url: str,
-        max_depth: int,
-        domain: str,
-        sem: asyncio.Semaphore,
-        sem_db: asyncio.Semaphore,
-        log: logging.Logger,
-):
+async def parocessing_gage(url, max_depth, domain, sem, sem_db) -> List[str]:
     global visited_urls
 
     async with sem:
@@ -110,7 +103,7 @@ async def parse_site_recursive(
 
     if max_depth == 1:
         log.debug(f'Parsing page: {url} finished, max depth reached')
-        return
+        return []
 
     page_links = get_internal_links(page, domain)
     new_page_links = page_links - visited_urls
@@ -119,8 +112,20 @@ async def parse_site_recursive(
 
     visited_urls = visited_urls | new_page_links
 
-    tasks = [asyncio.create_task(parse_site_recursive(link, max_depth - 1, domain, sem, sem_db, log)) for link in
-             new_page_links]
+    return new_page_links
+
+
+async def parse_site_recursive(
+        url: str,
+        max_depth: int,
+        domain: str,
+        sem: asyncio.Semaphore,
+        sem_db: asyncio.Semaphore,
+):
+    new_links = await parocessing_gage(url, max_depth, domain, sem, sem_db)
+
+    tasks = [asyncio.create_task(parse_site_recursive(link, max_depth - 1, domain, sem, sem_db)) for link in
+             new_links]
     await asyncio.gather(*tasks)
 
 
