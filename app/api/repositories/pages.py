@@ -6,9 +6,9 @@ from ..database import SessionLocal
 
 class PageRepository:
     @classmethod
-    async def add_task(cls, task: SPageAdd) -> int:
+    async def add_task(cls, page: SPageAdd) -> int:
         async with SessionLocal() as session:
-            data = task.model_dump()
+            data = page.model_dump()
             new_task = Page(**data)
             session.add(new_task)
             await session.flush()

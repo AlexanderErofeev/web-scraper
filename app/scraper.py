@@ -11,6 +11,7 @@ from api.schemas.page import SPageAdd
 from settings import MAX_TRIES, MAX_TIME, LOG_CONFIG, MAX_TRIES_DB_REQUESTS
 import logging
 import logging.config
+from playwright.async_api import async_playwright
 from uuid import uuid4
 from pathlib import Path
 
@@ -24,6 +25,16 @@ async def get_html(url):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
             return await resp.text()
+
+
+async def get_html_js(url):
+    async with async_playwright() as p:
+        browser = await p.chromium.launch()
+        page = await browser.new_page()
+        await page.goto(url)
+        html = await page.content()
+        await browser.close()
+        return html
 
 
 def is_internal_link(link: ParseResult, domain: str) -> bool:
@@ -130,7 +141,7 @@ async def parse_site_recursive(
 
 
 async def main():
-    await parse_site('https://anextour.ru/', 3, 20)
+    await parse_site('https://anextour.ru/', 8, 50)
 
 
 asyncio.run(main())

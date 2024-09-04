@@ -28,7 +28,7 @@ LOG_CONFIG = {
         {
             "formatter": "simple",
             "class": 'logging.StreamHandler',
-            "level": "INFO",
+            # "level": "INFO",
         },
     },
     "loggers":
