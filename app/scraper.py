@@ -80,7 +80,7 @@ def get_title(page: str) -> str:
 async def save_page_to_db(page: str, url: str) -> None:
     page_title = get_title(page)
     file_name = f"{uuid4()}.html"
-    async with aiof.open(Path('scraper_htmls', file_name), "w", encoding='utf-8') as out:
+    async with aiof.open(Path('app/scraper_htmls', file_name), "w", encoding='utf-8') as out:
         await out.write(page)
         await out.flush()
     page_obj = SPageAdd(title=page_title, url=url, html=file_name)
@@ -142,7 +142,7 @@ async def parse_site_recursive(
 
 
 async def main():
-    os.makedirs('scraper_htmls', exist_ok=True)
+    os.makedirs('app/scraper_htmls', exist_ok=True)
     await parse_site('https://anextour.ru/', 8, 50)
 
 

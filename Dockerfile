@@ -2,12 +2,12 @@ FROM python:3.12
 
 ENV TZ=Europe/Ekaterinburg
 
-COPY ./app/ /app/
+WORKDIR /code
 
-WORKDIR app
+COPY ./requirements.txt /code/requirements.txt
 
-COPY requirements.txt .
+RUN pip install --no-cache-dir --upgrade -r /code/requirements.txt
 
-RUN pip install --no-cache-dir -r /app/requirements.txt
+COPY ./app /code/app
 
 CMD ["uvicorn", "app.api.main:app", "--host", "0.0.0.0"]

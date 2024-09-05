@@ -22,7 +22,7 @@ LOG_CONFIG = {
         {
             "formatter": "simple",
             "class": 'logging.FileHandler',
-            "filename": 'log/scraper.log'
+            "filename": 'app/log/scraper.log'
         },
         "scraper":
         {
