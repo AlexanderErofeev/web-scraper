@@ -67,5 +67,6 @@ LOG_CONFIG = {
         "scraper": {"handlers": ["scraper", "scraper_file"], "level": "DEBUG", "propagate": False},
         "uvicorn": {"handlers": ["uvicorn_default_file"], "level": "INFO", "propagate": False},
         "uvicorn.access": {"handlers": ["uvicorn_access_file"], "level": "INFO", "propagate": False},
+        "backoff": {"handlers": ["scraper", "scraper_file"], "level": "INFO", "propagate": False},
     }
 }
