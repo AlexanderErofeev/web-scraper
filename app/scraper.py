@@ -150,9 +150,9 @@ async def parse_site_recursive(
 async def main():
     os.makedirs('app/scraper_htmls', exist_ok=True)
     parser = argparse.ArgumentParser(description="Парсер")
-    parser.add_argument("host", type=str, help="host сайта для прсинга")
-    parser.add_argument("max_depth", type=int, help="Глубина парсинга")
-    parser.add_argument("request_count", type=int, help="Максимум одновременных запросов")
+    parser.add_argument("--host", type=str, help="host сайта для прсинга", required=True)
+    parser.add_argument("--max_depth", type=int, help="Глубина парсинга", required=True)
+    parser.add_argument("--request_count", type=int, help="Максимум одновременных запросов", required=True)
     args = parser.parse_args()
     await parse_site(args.host, args.max_depth, args.request_count)
 

@@ -32,7 +32,10 @@
 5. **Соберите данные с сайта:**
 
    ```sh
-   docker exec web-scraper-api python app/scraper.py https://anextour.ru/ 5 10
+   docker exec web-scraper-api python -m app.scraper \
+     --host=anextour.ru \
+     --max_depth=5 \
+     --request_count=2
    ```
    
 
