@@ -9,7 +9,7 @@ router = APIRouter(prefix="/pages")
 
 
 @router.get("/", response_model=list[SPageList])
-async def get_tasks(q: str = None):
+async def get_pages(q: str = None):
     pages = await PageRepository.get_pages(q)
     return pages
 
