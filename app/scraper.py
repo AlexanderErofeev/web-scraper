@@ -11,7 +11,6 @@ from .repositories.pages import PageRepository
 from app.schemas.page import SPageAdd
 from .config import LOG_CONFIG
 import logging.config
-from playwright.async_api import async_playwright
 from uuid import uuid4
 from pathlib import Path
 import argparse
@@ -43,16 +42,6 @@ async def get_html(url: str) -> str | None:
         return None
 
 
-async def get_html_js(url):
-    async with async_playwright() as p:
-        browser = await p.chromium.launch()
-        page = await browser.new_page()
-        await page.goto(url)
-        html = await page.content()
-        await browser.close()
-        return html
-
-
 def is_internal_link(link: ParseResult, domain: str) -> bool:
     if link.path in ('', '/'):
         return False
@@ -73,11 +62,11 @@ def format_link(link: ParseResult, domain: str) -> str:
 
 def get_internal_links(page: str, domain: str) -> Set[str]:
     page = BeautifulSoup(page, 'html.parser')
-    link_tegs = page.body.find_all('a') if page and page.body else []
+    link_tags = page.body.find_all('a') if page and page.body else []
 
     page_links = []
-    for teg in link_tegs:
-        link = urlparse(teg.get('href'))
+    for tag in link_tags:
+        link = urlparse(tag.get('href'))
         if not is_internal_link(link, domain):
             continue
         link = format_link(link, domain)
@@ -114,10 +103,10 @@ async def parse_site(
     log.info(f'Parsing site: {host} started')
     t1 = time()
     await parse_site_recursive(url, max_depth, host, sem, sem_db)
-    log.info(f'Parsing site: {host} finished, pages: {len(visited_urls)}, total time: {time() - t1}')
+    log.info(f'Parsing site: {host} finished, pages: {len(visited_urls)}, total time: {int(time() - t1)} sec.')
 
 
-async def parocessing_gage(url, max_depth, domain, sem, sem_db) -> List[str]:
+async def processing_page(url, max_depth, domain, sem, sem_db) -> List[str]:
     global visited_urls
 
     async with sem:
@@ -152,7 +141,7 @@ async def parse_site_recursive(
         sem: asyncio.Semaphore,
         sem_db: asyncio.Semaphore,
 ):
-    new_links = await parocessing_gage(url, max_depth, domain, sem, sem_db)
+    new_links = await processing_page(url, max_depth, domain, sem, sem_db)
 
     tasks = [asyncio.create_task(parse_site_recursive(link, max_depth - 1, domain, sem, sem_db)) for link in
              new_links]
@@ -162,7 +151,7 @@ async def parse_site_recursive(
 async def main():
     os.makedirs('app/scraper_htmls', exist_ok=True)
     parser = argparse.ArgumentParser(description="Парсер")
-    parser.add_argument("--host", type=str, help="host сайта для прсинга", required=True)
+    parser.add_argument("--host", type=str, help="host сайта для парсинга", required=True)
     parser.add_argument("--max_depth", type=int, help="Глубина парсинга", required=True)
     parser.add_argument("--request_count", type=int, help="Максимум одновременных запросов", required=True)
     args = parser.parse_args()
