@@ -24,7 +24,7 @@ async def get_page(id: int):
             detail="Page not found"
         )
 
-    file = Path('scraper_htmls', page.html)
+    file = Path('app/scraper_htmls', page.html)
     async with aiof.open(file, mode='r', encoding='utf-8') as f:
         contents = await f.read()
         page.html = contents
