@@ -9,20 +9,25 @@ from bs4 import BeautifulSoup
 import backoff
 from api.repositories.pages import PageRepository
 from api.schemas.page import SPageAdd
-from settings import MAX_TRIES, MAX_TIME, LOG_CONFIG, MAX_TRIES_DB_REQUESTS
-import logging
+from api.config import LOG_CONFIG
 import logging.config
 from playwright.async_api import async_playwright
 from uuid import uuid4
 from pathlib import Path
 import argparse
+from api.dependencies import get_scraper_settings
 
+
+scraper_settings = get_scraper_settings()
 logging.config.dictConfig(LOG_CONFIG)
 visited_urls = set()
 log = logging.getLogger('scraper')
 
 
-@backoff.on_exception(backoff.expo, aiohttp.ClientError, max_tries=MAX_TRIES, max_time=MAX_TIME)
+@backoff.on_exception(backoff.expo,
+                      aiohttp.ClientError,
+                      max_tries=scraper_settings.max_request_attempts,
+                      max_time=scraper_settings.max_time_for_page)
 async def get_html(url):
     async with aiohttp.ClientSession() as session:
         async with session.get(url) as resp:
@@ -95,7 +100,7 @@ async def parse_site(
 ) -> None:
     domain = urlparse(url).netloc
     sem = asyncio.Semaphore(parallel_request_count)
-    sem_db = asyncio.Semaphore(MAX_TRIES_DB_REQUESTS)
+    sem_db = asyncio.Semaphore(scraper_settings.max_requests_to_db)
 
     log.info(f'Parsing site: {domain} started')
     t1 = time()

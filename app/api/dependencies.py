@@ -15,3 +15,8 @@ def get_db() -> Session:
 @lru_cache
 def get_db_settings() -> config.DBSettings:
     return config.DBSettings()
+
+
+@lru_cache
+def get_scraper_settings() -> config.ScraperSettings:
+    return config.ScraperSettings()

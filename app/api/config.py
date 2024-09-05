@@ -12,3 +12,14 @@ class DBSettings(BaseSettings):
         env_prefix = "DB_"
         env_file = ".env"
         extra = "ignore"
+
+
+class ScraperSettings(BaseSettings):
+    max_request_attempts: int
+    max_time_for_page: int
+    max_requests_to_db: int
+
+    class Config:
+        env_prefix = "SCRAPER_"
+        env_file = ".env"
+        extra = "ignore"
