@@ -19,8 +19,12 @@ from .dependencies import get_scraper_settings
 
 scraper_settings = get_scraper_settings()
 logging.config.dictConfig(LOG_CONFIG)
-visited_urls = set()
 log = logging.getLogger('scraper')
+
+visited_urls = set
+domain = str
+sem = asyncio.Semaphore
+sem_db = asyncio.Semaphore
 
 
 @backoff.on_exception(backoff.expo,
@@ -42,7 +46,7 @@ async def get_html(url: str) -> str | None:
         return None
 
 
-def is_internal_link(link: ParseResult, domain: str) -> bool:
+def is_internal_link(link: ParseResult) -> bool:
     if link.path in ('', '/'):
         return False
     if link.scheme == '' and link.netloc == '':
@@ -52,7 +56,7 @@ def is_internal_link(link: ParseResult, domain: str) -> bool:
     return link.netloc == domain
 
 
-def format_link(link: ParseResult, domain: str) -> str:
+def format_link(link: ParseResult) -> str:
     return (link._replace(
         scheme='https',
         netloc=domain,
@@ -60,16 +64,16 @@ def format_link(link: ParseResult, domain: str) -> str:
             .geturl())
 
 
-def get_internal_links(page: str, domain: str) -> Set[str]:
+def get_internal_links(page: str) -> Set[str]:
     page = BeautifulSoup(page, 'html.parser')
     link_tags = page.body.find_all('a') if page and page.body else []
 
     page_links = []
     for tag in link_tags:
         link = urlparse(tag.get('href'))
-        if not is_internal_link(link, domain):
+        if not is_internal_link(link):
             continue
-        link = format_link(link, domain)
+        link = format_link(link)
         page_links.append(link)
 
     return set(page_links)
@@ -88,7 +92,8 @@ async def save_page(page: str, url: str) -> None:
         await out.write(page)
         await out.flush()
     page_obj = SPageAdd(title=page_title, url=url, html=file_name)
-    await PageRepository.add_task(page_obj)
+    async with sem_db:
+        await PageRepository.add_page(page_obj)
 
 
 async def parse_site(
@@ -96,23 +101,26 @@ async def parse_site(
         max_depth: int,
         parallel_request_count: int
 ) -> None:
-    url = f'https://{host}'
+    global visited_urls
+    global domain
+    global sem
+    global sem_db
+
+    visited_urls = set()
+    domain = host
     sem = asyncio.Semaphore(parallel_request_count)
     sem_db = asyncio.Semaphore(scraper_settings.max_requests_to_db)
 
+    url = f'https://{host}'
+
     log.info(f'Parsing site: {host} started')
-    t1 = time()
-    await parse_site_recursive(url, max_depth, host, sem, sem_db)
-    log.info(f'Parsing site: {host} finished, pages: {len(visited_urls)}, total time: {int(time() - t1)} sec.')
+    start_time = time()
+    await parse_site_recursive(url, max_depth)
+    total_time = int(time() - start_time)
+    log.info(f'Parsing site: {host} finished, pages: {len(visited_urls)}, total time: {total_time} sec.')
 
 
-async def processing_page(
-        url: str,
-        max_depth: int,
-        domain: str,
-        sem: asyncio.Semaphore,
-        sem_db: asyncio.Semaphore,
-) -> List[str]:
+async def processing_page(url: str, max_depth: int) -> List[str]:
     global visited_urls
 
     async with sem:
@@ -123,14 +131,13 @@ async def processing_page(
 
     log.debug(f'Parsing page: {url} started')
 
-    async with sem_db:
-        await save_page(page, url)
+    await save_page(page, url)
 
     if max_depth == 1:
         log.debug(f'Parsing page: {url} finished, max depth reached')
         return []
 
-    page_links = get_internal_links(page, domain)
+    page_links = get_internal_links(page)
     new_page_links = page_links - visited_urls
 
     log.debug(f'Parsing page: {url} finished, links: {len(page_links)}, new links: {len(new_page_links)}')
@@ -140,18 +147,12 @@ async def processing_page(
     return new_page_links
 
 
-async def parse_site_recursive(
-        url: str,
-        max_depth: int,
-        domain: str,
-        sem: asyncio.Semaphore,
-        sem_db: asyncio.Semaphore,
-) -> None:
-    new_links = await processing_page(url, max_depth, domain, sem, sem_db)
+async def parse_site_recursive(url: str, max_depth: int) -> None:
+    new_links = await processing_page(url, max_depth)
 
     tasks = []
     for link in new_links:
-        task = asyncio.create_task(parse_site_recursive(link, max_depth - 1, domain, sem, sem_db))
+        task = asyncio.create_task(parse_site_recursive(link, max_depth - 1))
         tasks.append(task)
     await asyncio.gather(*tasks)
 
