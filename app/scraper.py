@@ -94,18 +94,18 @@ async def save_page_to_db(page: str, url: str) -> None:
 
 
 async def parse_site(
-        url: str,
+        host: str,
         max_depth: int,
         parallel_request_count: int
 ) -> None:
-    domain = urlparse(url).netloc
+    url = f'https://{host}'
     sem = asyncio.Semaphore(parallel_request_count)
     sem_db = asyncio.Semaphore(scraper_settings.max_requests_to_db)
 
-    log.info(f'Parsing site: {domain} started')
+    log.info(f'Parsing site: {host} started')
     t1 = time()
-    await parse_site_recursive(url, max_depth, domain, sem, sem_db)
-    log.info(f'Parsing site: {domain} finished, pages: {len(visited_urls)}, total time: {time() - t1}')
+    await parse_site_recursive(url, max_depth, host, sem, sem_db)
+    log.info(f'Parsing site: {host} finished, pages: {len(visited_urls)}, total time: {time() - t1}')
 
 
 async def parocessing_gage(url, max_depth, domain, sem, sem_db) -> List[str]:
