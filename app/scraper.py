@@ -81,7 +81,7 @@ def get_title(page: str) -> str:
     return title.text if title else None
 
 
-async def save_page_to_db(page: str, url: str) -> None:
+async def save_page(page: str, url: str) -> None:
     page_title = get_title(page)
     file_name = f"{uuid4()}.html"
     async with aiof.open(Path('app/scraper_htmls', file_name), "w", encoding='utf-8') as out:
@@ -106,7 +106,13 @@ async def parse_site(
     log.info(f'Parsing site: {host} finished, pages: {len(visited_urls)}, total time: {int(time() - t1)} sec.')
 
 
-async def processing_page(url, max_depth, domain, sem, sem_db) -> List[str]:
+async def processing_page(
+        url: str,
+        max_depth: int,
+        domain: str,
+        sem: asyncio.Semaphore,
+        sem_db: asyncio.Semaphore,
+) -> List[str]:
     global visited_urls
 
     async with sem:
@@ -118,7 +124,7 @@ async def processing_page(url, max_depth, domain, sem, sem_db) -> List[str]:
     log.debug(f'Parsing page: {url} started')
 
     async with sem_db:
-        await save_page_to_db(page, url)
+        await save_page(page, url)
 
     if max_depth == 1:
         log.debug(f'Parsing page: {url} finished, max depth reached')
@@ -140,11 +146,13 @@ async def parse_site_recursive(
         domain: str,
         sem: asyncio.Semaphore,
         sem_db: asyncio.Semaphore,
-):
+) -> None:
     new_links = await processing_page(url, max_depth, domain, sem, sem_db)
 
-    tasks = [asyncio.create_task(parse_site_recursive(link, max_depth - 1, domain, sem, sem_db)) for link in
-             new_links]
+    tasks = []
+    for link in new_links:
+        task = asyncio.create_task(parse_site_recursive(link, max_depth - 1, domain, sem, sem_db))
+        tasks.append(task)
     await asyncio.gather(*tasks)
 
 
