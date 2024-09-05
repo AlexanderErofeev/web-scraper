@@ -1,7 +1,6 @@
 from functools import lru_cache
 from sqlalchemy.orm import Session
-from . import config
-from . import database
+from app import config, database
 
 
 def get_db() -> Session:

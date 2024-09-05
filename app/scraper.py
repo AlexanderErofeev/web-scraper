@@ -7,15 +7,15 @@ import aiohttp
 import aiofiles as aiof
 from bs4 import BeautifulSoup
 import backoff
-from api.repositories.pages import PageRepository
-from api.schemas.page import SPageAdd
-from api.config import LOG_CONFIG
+from .repositories.pages import PageRepository
+from app.schemas.page import SPageAdd
+from .config import LOG_CONFIG
 import logging.config
 from playwright.async_api import async_playwright
 from uuid import uuid4
 from pathlib import Path
 import argparse
-from api.dependencies import get_scraper_settings
+from .dependencies import get_scraper_settings
 
 
 scraper_settings = get_scraper_settings()
