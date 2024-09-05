@@ -6,7 +6,7 @@ from ..database import SessionLocal
 
 class PageRepository:
     @classmethod
-    async def add_task(cls, page: SPageAdd) -> int:
+    async def add_page(cls, page: SPageAdd) -> int:
         async with SessionLocal() as session:
             data = page.model_dump()
             new_task = Page(**data)
@@ -36,17 +36,17 @@ class PageRepository:
                 ).limit(100)
 
             result = await session.execute(query)
-            task_models = result.scalars().all()
-            tasks = [SPageList.model_validate(task_model) for task_model in task_models]
-            return tasks
+            page_models = result.scalars().all()
+            pages = [SPageList.model_validate(page_model) for page_model in page_models]
+            return pages
 
     @classmethod
     async def get_page(cls, id: int) -> SPageDetail | None:
         async with SessionLocal() as session:
             query = select(Page).where(id == Page.id)
             result = await session.execute(query)
-            task_model = result.scalars().one_or_none()
-            if task_model is not None:
-                task = SPageDetail.model_validate(task_model)
-                return task
+            page_model = result.scalars().one_or_none()
+            if page_model is not None:
+                page = SPageDetail.model_validate(page_model)
+                return page
             return None
