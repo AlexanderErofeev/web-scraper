@@ -34,8 +34,8 @@
    ```sh
    docker exec web-scraper-api python -m app.scraper \
      --host=anextour.ru \
-     --max_depth=5 \
-     --request_count=2
+     --max_depth=4 \
+     --request_count=10
    ```
    
 <details>

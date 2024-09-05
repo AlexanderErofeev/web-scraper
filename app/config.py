@@ -16,7 +16,8 @@ class DBSettings(BaseSettings):
 
 class ScraperSettings(BaseSettings):
     max_request_attempts: int
-    max_time_for_page: int
+    timeout_request: int
+    timeout_for_page: int
     max_requests_to_db: int
 
     class Config:

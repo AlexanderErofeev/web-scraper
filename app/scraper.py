@@ -27,11 +27,20 @@ log = logging.getLogger('scraper')
 @backoff.on_exception(backoff.expo,
                       aiohttp.ClientError,
                       max_tries=scraper_settings.max_request_attempts,
-                      max_time=scraper_settings.max_time_for_page)
-async def get_html(url):
+                      max_time=scraper_settings.timeout_for_page)
+async def execute_request(url: str) -> str:
     async with aiohttp.ClientSession() as session:
-        async with session.get(url) as resp:
+        async with session.get(url, timeout=scraper_settings.timeout_request, raise_for_status=True) as resp:
             return await resp.text()
+
+
+async def get_html(url: str) -> str | None:
+    try:
+        html = await execute_request(url)
+        return html
+    except Exception as err:
+        log.warning(f'Failed to get html from {url}: {err.__class__.__name__}')
+        return None
 
 
 async def get_html_js(url):
@@ -113,6 +122,9 @@ async def parocessing_gage(url, max_depth, domain, sem, sem_db) -> List[str]:
 
     async with sem:
         page = await get_html(url)
+
+    if page is None:
+        return []
 
     log.debug(f'Parsing page: {url} started')
 
