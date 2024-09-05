@@ -15,6 +15,7 @@ import logging.config
 from playwright.async_api import async_playwright
 from uuid import uuid4
 from pathlib import Path
+import argparse
 
 logging.config.dictConfig(LOG_CONFIG)
 visited_urls = set()
@@ -143,7 +144,12 @@ async def parse_site_recursive(
 
 async def main():
     os.makedirs('app/scraper_htmls', exist_ok=True)
-    await parse_site('https://anextour.ru/', 8, 50)
+    parser = argparse.ArgumentParser(description="Парсер")
+    parser.add_argument("host", type=str, help="host сайта для прсинга")
+    parser.add_argument("max_depth", type=int, help="Глубина парсинга")
+    parser.add_argument("request_count", type=int, help="Максимум одновременных запросов")
+    args = parser.parse_args()
+    await parse_site(args.host, args.max_depth, args.request_count)
 
 
 asyncio.run(main())
