@@ -120,14 +120,14 @@ async def parse_site(
     log.info(f'Parsing site: {host} finished, pages: {len(visited_urls)}, total time: {total_time} sec.')
 
 
-async def processing_page(url: str, max_depth: int) -> List[str]:
+async def processing_page(url: str, max_depth: int) -> Set[str]:
     global visited_urls
 
     async with sem:
         page = await get_html(url)
 
     if page is None:
-        return []
+        return set()
 
     log.debug(f'Parsing page: {url} started')
 
@@ -135,7 +135,7 @@ async def processing_page(url: str, max_depth: int) -> List[str]:
 
     if max_depth == 1:
         log.debug(f'Parsing page: {url} finished, max depth reached')
-        return []
+        return set()
 
     page_links = get_internal_links(page)
     new_page_links = page_links - visited_urls
@@ -154,6 +154,7 @@ async def parse_site_recursive(url: str, max_depth: int) -> None:
     for link in new_links:
         task = asyncio.create_task(parse_site_recursive(link, max_depth - 1))
         tasks.append(task)
+    del new_links
     await asyncio.gather(*tasks)
 
 
